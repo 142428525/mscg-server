@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+//package packets.msg;
+
+import "protobuf/heartbeat.proto";
+
+message MsgBody {
+	oneof body {
+		Heartbeat heartbeat = 2;
+	}
+}

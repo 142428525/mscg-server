@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+enum Type {
+	UNSPECIFIED = 0;
+	REQUEST = 1;
+	RESPONSE = 2;
+	ANOUNCEMENT = 3;
+	HEARTBEAT = 4;
+}
