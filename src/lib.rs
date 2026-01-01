@@ -1,4 +1,4 @@
 pub mod cs_api;
-pub mod packets;
+pub mod packet;
 pub mod server;
 pub mod misc;

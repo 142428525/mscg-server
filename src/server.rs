@@ -33,7 +33,7 @@ impl Connection {
 	}
 
 	/// Ok(None) means all data has been decoded successfully, and we've met the end of the stream.
-	fn read_msg(&mut self) -> Result<Option<packets::msg::Msg>> {
+	fn read_msg(&mut self) -> Result<Option<packet::msg::Msg>> {
 		fn read_from_stream(stream: &mut net::TcpStream, buf: &mut bytes::BytesMut) -> Result<usize> {
 			let read_bytes_num = stream /*.get_mut()*/
 				.read(&mut buf[..])?;
@@ -48,7 +48,7 @@ impl Connection {
 		}
 
 		let head = loop {
-			match packets::try_parse_head(&mut self.read_buf) {
+			match packet::try_parse_head(&mut self.read_buf) {
 				Ok(Some(x)) => break x,
 				Err(e) => log::error!("{}", e),
 				Ok(None) => continue,
@@ -65,7 +65,7 @@ impl Connection {
 		};
 
 		let body = loop {
-			match packets::try_parse_body(&head, &mut self.read_buf) {
+			match packet::try_parse_body(&head, &mut self.read_buf) {
 				Ok(Some(x)) => break x,
 				Err(e) => log::error!("{}", e),
 				Ok(None) => continue,
@@ -81,7 +81,7 @@ impl Connection {
 			}
 		};
 
-		Ok(Some(packets::msg::Msg(head, body)))
+		Ok(Some(packet::msg::Msg(head, body)))
 	}
 }
 

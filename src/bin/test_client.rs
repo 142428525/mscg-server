@@ -36,7 +36,7 @@ fn main() -> Result<()> {
 	println!("Here: {:?}", stream.local_addr());
 
 	loop {
-		let hb = packets::build_heartbeat_msg(0_u8.into());
+		let hb = packet::build_heartbeat_msg(0_u8.into());
 
 		let mut send_msg =|| -> Result<()> {
 			stream.write_all(&hb.0.encode_to_vec())?;

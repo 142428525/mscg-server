@@ -103,6 +103,12 @@ pub(crate) mod msg {
 				&peeking[..4],
 				MAGIC.to_be_bytes()
 			);
+			ensure!(
+				peeking[4] == VERSION,
+				"Unmatched msg version: {} (expected {})",
+				peeking[4],
+				VERSION
+			);
 
 			Ok(())
 		}
@@ -126,15 +132,12 @@ pub(crate) mod msg {
 				"Too long message body (> 16MiB). Why doing so???"
 			);
 
-			let mut buf = bytes::BytesMut::with_capacity(len);
-			msg_body.encode(&mut buf)?;
-
 			Ok(Self(
 				MsgHead::build(
 					ty as u8,
 					session_id,
 					len.try_into().unwrap(),
-					crc32fast::hash(buf.iter().as_slice()),
+					crc32fast::hash(&msg_body.encode_to_vec()),
 				),
 				msg_body,
 			))
@@ -154,11 +157,11 @@ pub(crate) mod msg {
 		}
 
 		pub fn encode_to_vec(&self) -> Vec<u8> {
-			let mut tmp = bytes::BytesMut::with_capacity(MsgHead::len() + self.0.len.as_usize());
+			let mut tmp = Vec::with_capacity(MsgHead::len() + self.0.len.as_usize());
 			self.0.encode(&mut tmp).unwrap();
 			self.1.encode(&mut tmp).unwrap();
 
-			tmp.to_vec()
+			tmp
 		}
 	}
 }
@@ -255,12 +258,14 @@ pub fn build_heartbeat_msg(session_id: u24) -> Msg {
 
 #[cfg(test)]
 mod tests {
+	use std::io;
+
 	use anyhow::Ok;
 
 	use super::*;
 
 	#[test]
-	fn parse_msg() -> Result<()> {
+	fn parse_separately() -> Result<()> {
 		let msg = build_heartbeat_msg(11451_u16.into());
 		println!("msg: {:?}", msg);
 
@@ -287,7 +292,7 @@ mod tests {
 	}
 
 	#[test]
-	fn try_parse_msg() -> Result<()> {
+	fn parse_as_a_whole() -> Result<()> {
 		let msg = build_heartbeat_msg(11451_u16.into());
 		println!("msg: {:?}", msg);
 
@@ -357,6 +362,39 @@ mod tests {
 		// 		crc32: 4071366280
 		// 	}
 		// );
+
+		Ok(())
+	}
+
+	#[test]
+	fn cursor() -> Result<()> {
+		let msg = build_heartbeat_msg(11451_u16.into());
+		println!("{:?}", msg);
+		println!("msg: {:X?}", msg.encode_to_vec());
+
+		let mut buf = bytes::BytesMut::with_capacity(128);
+		msg.encode(&mut buf)?;
+		msg.encode(&mut buf)?;
+		println!("init buf: {:X?}", buf.to_vec());
+
+		let mut parse = || -> Result<()> {
+			let h = try_parse_head(&mut buf)?.unwrap();
+			println!("{:X?}", buf.to_vec());
+			let b = try_parse_body(&h, &mut buf)?.unwrap();
+			println!("{:X?}", buf.to_vec());
+
+			assert_eq!(Msg(h, b), msg);
+
+			Ok(())
+		};
+
+		parse()?;
+		//parse()?;
+
+		let buf = io::Cursor::new(buf);
+		println!("{:?}", buf);
+
+		assert_eq!(buf.position(), 0);
 
 		Ok(())
 	}
