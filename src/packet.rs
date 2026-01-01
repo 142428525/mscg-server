@@ -367,7 +367,7 @@ mod tests {
 	}
 
 	#[test]
-	fn cursor() -> Result<()> {
+	fn parse_multi() -> Result<()> {
 		let msg = build_heartbeat_msg(11451_u16.into());
 		println!("{:?}", msg);
 		println!("msg: {:X?}", msg.encode_to_vec());
@@ -389,12 +389,9 @@ mod tests {
 		};
 
 		parse()?;
-		//parse()?;
+		parse()?;
 
-		let buf = io::Cursor::new(buf);
-		println!("{:?}", buf);
-
-		assert_eq!(buf.position(), 0);
+		assert_eq!(buf.len(), 0);
 
 		Ok(())
 	}
