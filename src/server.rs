@@ -24,7 +24,7 @@ struct Connection {
 impl Connection {
 	fn new(stream: net::TcpStream) -> Self {
 		let mut buf = bytes::BytesMut::with_capacity(4096);
-		buf.resize(4096, 0);
+		buf.resize(4096, 0); // stream.read() only writes into a slice of buf, thus init is a must
 		Self {
 			socket: stream.peer_addr().expect("Failed to get peer's addr"),
 			stream, //: io::BufWriter::new(stream),
@@ -51,7 +51,10 @@ impl Connection {
 			match packet::try_parse_head(&mut self.read_buf) {
 				Ok(Some(x)) => break x,
 				Err(e) => log::error!("{}", e),
-				Ok(None) => continue,
+				Ok(None) => {
+					log::debug!("Waiting for reading data...");
+					//continue;
+				}
 			}
 
 			let read_bytes_num = read_from_stream(&mut self.stream, &mut self.read_buf)?;
@@ -68,7 +71,10 @@ impl Connection {
 			match packet::try_parse_body(&head, &mut self.read_buf) {
 				Ok(Some(x)) => break x,
 				Err(e) => log::error!("{}", e),
-				Ok(None) => continue,
+				Ok(None) => {
+					log::debug!("Waiting for reading data...");
+					//continue;
+				}
 			}
 
 			let read_bytes_num = read_from_stream(&mut self.stream, &mut self.read_buf)?;

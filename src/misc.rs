@@ -82,7 +82,7 @@ impl TryFrom<&[u8]> for u24 {
 		if value.len() == 3 {
 			Ok(Self([value[0], value[1], value[2]]))
 		} else {
-			bail!("unable to convert a {}-byte {:X?} into a u24", value.len(), value)
+			bail!("Unable to convert a {}-byte {:X?} into a u24", value.len(), value)
 		}
 	}
 }

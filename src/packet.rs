@@ -99,7 +99,7 @@ pub(crate) mod msg {
 			let peeking = &buf.chunk()[..expected];
 			ensure!(
 				peeking[..4] == MAGIC.to_be_bytes(),
-				"Invalid magic number, shown as bytes: {:X?} (expected {:X?})",
+				"Invalid magic number, shown as big-endian bytes: {:X?} (expected {:X?})",
 				&peeking[..4],
 				MAGIC.to_be_bytes()
 			);
@@ -175,7 +175,7 @@ pub fn try_parse_head(mut buf: impl bytes::Buf + fmt::Debug) -> Result<Option<Ms
 	let len = MsgHead::len();
 	if buf.remaining() < len {
 		log::warn!(
-			"parse_head: buf remaining only: {} (expected >= {})",
+			"parse_head: Buf remaining only: {} (expected >= {})",
 			buf.remaining(),
 			len
 		);
@@ -185,14 +185,17 @@ pub fn try_parse_head(mut buf: impl bytes::Buf + fmt::Debug) -> Result<Option<Ms
 	let tmp = buf.chunk().get(..len);
 	let tmp = match tmp {
 		Some(data) => data.to_owned(),
-		_ => bail!("Unexpectedly can't get enough data from buf to parse a MsgHead!"),
+		_ => bail!("Unexpectedly no enough data to parse a MsgHead!"),
 	};
 
 	// if tmp is full of 0, for its magic number is [0, 0, 0, 0]
-	ensure!(
-		tmp[..4] != [0, 0, 0, 0],
-		"Haven't received data yet, buf still full of 0! This error should be ignored."
-	);
+	// ensure!(
+	// 	tmp[..4] != [0, 0, 0, 0],
+	// 	"Haven't received data yet, buf still full of 0! This error should be ignored."
+	// );
+	if tmp[..4] == [0,0,0,0] {
+		return Ok(None);
+	}
 
 	log::debug!("recv head: {:X?}", tmp);
 	buf.advance(len);
@@ -207,7 +210,7 @@ pub fn try_parse_body(head: &MsgHead, mut buf: impl bytes::Buf + fmt::Debug) -> 
 	let len = head.len.into();
 	if buf.remaining() < len {
 		log::warn!(
-			"parse_body: buf remaining only: {} (expected >= {})",
+			"parse_body: Buf remaining only: {} (expected >= {})",
 			buf.remaining(),
 			len
 		);
@@ -217,14 +220,17 @@ pub fn try_parse_body(head: &MsgHead, mut buf: impl bytes::Buf + fmt::Debug) -> 
 	let tmp = buf.chunk().get(..len);
 	let tmp = match tmp {
 		Some(data) => data.to_owned(),
-		_ => bail!("Unexpectedly can't get enough data from buf to parse a MsgBody!"),
+		_ => bail!("Unexpectedly no enough data to parse a MsgBody!"),
 	};
 
 	// if tmp is full of 0, for its protobuf message head is 0 (expected >= 1)
-	ensure!(
-		tmp[0] != 0,
-		"Haven't received data yet, buf still full of 0! This error should be ignored."
-	);
+	// ensure!(
+	// 	tmp[0] != 0,
+	// 	"Haven't received data yet, buf still full of 0! This error should be ignored."
+	// );
+	if tmp[0] == 0 {
+		return Ok(None);
+	}
 
 	log::debug!("recv body: {:X?}", tmp);
 	buf.advance(len);
@@ -240,7 +246,7 @@ pub fn try_parse_body(head: &MsgHead, mut buf: impl bytes::Buf + fmt::Debug) -> 
 				bail!("CRC32 verification fails: {:X} (expected {:X})", tmp_crc32, head.crc32);
 			}
 		}
-		Err(e) => bail!("{:?}\nCan't decode a MsgBody from: {:X?}", e, tmp), // why doesn't DecodeError derive from Error???
+		Err(e) => bail!("{:?}\nCan't decode a MsgBody from: {:X?}", e, tmp), // why doesn't prost::DecodeError derive from Error???
 		Ok(_) => bail!("WTF a MsgBody of None???"),
 	}
 }
@@ -258,8 +264,6 @@ pub fn build_heartbeat_msg(session_id: u24) -> Msg {
 
 #[cfg(test)]
 mod tests {
-	use std::io;
-
 	use anyhow::Ok;
 
 	use super::*;
